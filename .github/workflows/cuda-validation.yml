@@ -1,0 +1,92 @@
+name: CUDA validation of reviewed PR commits
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  gpu:
+    runs-on: [self-hosted, Windows, X64, gpu-pr-ef7243290e]
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: powershell
+    env:
+      MASK_MACHINE: ${{ secrets.MASK_MACHINE }}
+      MASK_USER: ${{ secrets.MASK_USER }}
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      GIT_TERMINAL_PROMPT: '0'
+    steps:
+      - name: Check GPU and runtime
+        run: |
+          nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+          if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi failed' }
+          & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -c "import torch; assert torch.cuda.is_available(); print('GPU:',torch.cuda.get_device_name(0),'PyTorch:',torch.__version__,'CUDA:',torch.version.cuda)"
+          if ($LASTEXITCODE -ne 0) { throw 'CUDA is unavailable' }
+      - name: Fetch the reviewed commits
+        run: |
+          $repos = @(
+            @('ergas', 'torchmetrics', '2191177de50e5dccdf9f0d14bca03ffe98fad85b'),
+            @('rase', 'torchmetrics', '573bb9662f4bbacf31cb61164b1a0f30655b1f84'),
+            @('forge', 'ForgeKernel', '6f65b40a77a2c8fb2c2bdd3eeda30af4f5fb6545'),
+            @('hyra', 'Hyra-results', '32238e0346318ae1f2f43bd83cae929e6dd2b45a'),
+            @('torchsim', 'torch-sim', '7577730feabbd531d211ed247a7a895bbdaee060')
+          )
+          foreach ($repo in $repos) {
+            $name, $origin, $revision = $repo
+            $dir = Join-Path $env:GITHUB_WORKSPACE $name
+            git -c init.templateDir= init --quiet $dir
+            if ($LASTEXITCODE -ne 0) { throw "git init failed: $name" }
+            git -C $dir -c credential.helper= fetch --quiet --depth=1 "https://github.com/bingdongni/$origin.git" $revision
+            if ($LASTEXITCODE -ne 0) { throw "git fetch failed: $name" }
+            if ($name -eq 'hyra') {
+              git -C $dir sparse-checkout init --cone
+              if ($LASTEXITCODE -ne 0) { throw 'Hyra sparse checkout init failed' }
+              git -C $dir sparse-checkout set AI4Science/hyinv
+              if ($LASTEXITCODE -ne 0) { throw 'Hyra sparse checkout setup failed' }
+            }
+            git -C $dir -c core.longpaths=true checkout --quiet --detach FETCH_HEAD
+            if ($LASTEXITCODE -ne 0) { throw "git checkout failed: $name" }
+            $actual = (git -C $dir rev-parse HEAD).Trim()
+            if ($LASTEXITCODE -ne 0 -or $actual -ne $revision) { throw "Unexpected commit for $name" }
+            Write-Host "$name HEAD $actual"
+          }
+      - name: TorchMetrics ERGAS on CUDA
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'ergas'
+          $env:PYTHONPATH = "$dir\src;$dir\tests"
+          Set-Location $dir
+          & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -m pytest -q -o addopts='' -m 'not DDP' -k 'cuda or half_gpu' tests/unittests/image/test_ergas.py
+          if ($LASTEXITCODE -ne 0) { throw 'ERGAS CUDA tests failed' }
+      - name: TorchMetrics RASE on CUDA
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'rase'
+          $env:PYTHONPATH = "$dir\src;$dir\tests"
+          Set-Location $dir
+          & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -m pytest -q -o addopts='' -m 'not DDP' -k cuda tests/unittests/image/test_rase.py
+          if ($LASTEXITCODE -ne 0) { throw 'RASE CUDA tests failed' }
+      - name: ForgeKernel task suite on CUDA
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'forge'
+          Set-Location $dir
+          & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -m pytest -q -o addopts='' tests/test_task_suite.py
+          if ($LASTEXITCODE -ne 0) { throw 'ForgeKernel task tests failed' }
+      - name: HyInv inverse folding on CUDA
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'hyra\AI4Science\hyinv'
+          $env:PYTHONPATH = $dir
+          Set-Location $dir
+          & 'D:\Python\python.exe' -m unittest discover -s tests -p test_fixed_positions.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'HyInv tests failed' }
+      - name: TorchSim singleton correlations on CUDA
+        run: |
+          $dir = Join-Path $env:GITHUB_WORKSPACE 'torchsim'
+          $env:PYTHONPATH = $dir
+          Set-Location $dir
+          & 'C:\PR\torchsim-venv-20261106\Scripts\python.exe' -c "import pathlib, torch, torch_sim; assert torch.cuda.is_available(); assert pathlib.Path(torch_sim.__file__).resolve().is_relative_to(pathlib.Path.cwd()); print('GPU:', torch.cuda.get_device_name(0), 'PyTorch:', torch.__version__, 'CUDA:', torch.version.cuda)"
+          if ($LASTEXITCODE -ne 0) { throw 'TorchSim CUDA or source check failed' }
+          & 'C:\PR\torchsim-venv-20261106\Scripts\python.exe' -m pytest tests/test_correlations.py -k single_component_autocorrelation -q
+          if ($LASTEXITCODE -ne 0) { throw 'TorchSim correlation regression failed' }
