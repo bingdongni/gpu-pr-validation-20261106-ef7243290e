@@ -1,0 +1,187 @@
+2026-11-06T14:51:02.1262112Z Current runner version: '2.338.2'
+2026-11-06T14:51:02.1269678Z Runner name: 'ephemeral-pr-gpu'
+2026-11-06T14:51:02.1270410Z Runner group name: 'Default'
+2026-11-06T14:51:02.1271373Z Machine name: '***'
+2026-11-06T14:51:02.1274374Z ##[group]GITHUB_TOKEN Permissions
+2026-11-06T14:51:02.1276758Z Metadata: read
+2026-11-06T14:51:02.1277301Z ##[endgroup]
+2026-11-06T14:51:02.1279140Z Secret source: Actions
+2026-11-06T14:51:02.1280220Z Cache mode: write
+2026-11-06T14:51:02.1280849Z Prepare workflow directory
+2026-11-06T14:51:02.1753374Z Prepare all required actions
+2026-11-06T14:51:02.1820319Z Complete job name: gpu
+2026-11-06T14:51:02.3313433Z ##[group]Run nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+2026-11-06T14:51:02.3314860Z nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+2026-11-06T14:51:02.3315776Z if ($LASTEXITCODE -ne 0) { throw 'nvidia-smi failed' }
+2026-11-06T14:51:02.3317235Z & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -c "import torch; assert torch.cuda.is_available(); print('GPU:',torch.cuda.get_device_name(0),'PyTorch:',torch.__version__,'CUDA:',torch.version.cuda)"
+2026-11-06T14:51:02.3318985Z if ($LASTEXITCODE -ne 0) { throw 'CUDA is unavailable' }
+2026-11-06T14:51:02.3355110Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:51:02.3356099Z env:
+2026-11-06T14:51:02.3356665Z   MASK_MACHINE: ***
+2026-11-06T14:51:02.3357142Z   MASK_USER: ***
+2026-11-06T14:51:02.3357582Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:51:02.3358201Z   OMP_NUM_THREADS: 2
+2026-11-06T14:51:02.3358638Z   MKL_NUM_THREADS: 2
+2026-11-06T14:51:02.3359118Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:51:02.3359561Z ##[endgroup]
+2026-11-06T14:51:02.6522505Z NVIDIA GeForce RTX 4060 Laptop GPU, 617.42, 8188 MiB
+2026-11-06T14:51:07.1418749Z GPU: NVIDIA GeForce RTX 4060 Laptop GPU PyTorch: 2.6.0+cu124 CUDA: 12.4
+2026-11-06T14:51:07.5111906Z ##[group]Run $repos = @(
+2026-11-06T14:51:07.5112405Z $repos = @(
+2026-11-06T14:51:07.5112766Z   @('ergas', 'torchmetrics', '2191177de50e5dccdf9f0d14bca03ffe98fad85b'),
+2026-11-06T14:51:07.5113267Z   @('rase', 'torchmetrics', '573bb9662f4bbacf31cb61164b1a0f30655b1f84'),
+2026-11-06T14:51:07.5113766Z   @('forge', 'ForgeKernel', '6f65b40a77a2c8fb2c2bdd3eeda30af4f5fb6545'),
+2026-11-06T14:51:07.5114242Z   @('hyra', 'Hyra-results', '32238e0346318ae1f2f43bd83cae929e6dd2b45a'),
+2026-11-06T14:51:07.5114704Z   @('torchsim', 'torch-sim', '7577730feabbd531d211ed247a7a895bbdaee060')
+2026-11-06T14:51:07.5115088Z )
+2026-11-06T14:51:07.5115312Z foreach ($repo in $repos) {
+2026-11-06T14:51:07.5115600Z   $name, $origin, $revision = $repo
+2026-11-06T14:51:07.5116053Z   $dir = Join-Path $env:GITHUB_WORKSPACE $name
+2026-11-06T14:51:07.5116499Z   git -c init.templateDir= init --quiet $dir
+2026-11-06T14:51:07.5116891Z   if ($LASTEXITCODE -ne 0) { throw "git init failed: $name" }
+2026-11-06T14:51:07.5117541Z   git -C $dir -c credential.helper= fetch --quiet --depth=1 "https://github.com/bingdongni/$origin.git" $revision
+2026-11-06T14:51:07.5118133Z   if ($LASTEXITCODE -ne 0) { throw "git fetch failed: $name" }
+2026-11-06T14:51:07.5118493Z   if ($name -eq 'hyra') {
+2026-11-06T14:51:07.5118792Z     git -C $dir sparse-checkout init --cone
+2026-11-06T14:51:07.5119183Z     if ($LASTEXITCODE -ne 0) { throw 'Hyra sparse checkout init failed' }
+2026-11-06T14:51:07.5119612Z     git -C $dir sparse-checkout set AI4Science/hyinv
+2026-11-06T14:51:07.5120045Z     if ($LASTEXITCODE -ne 0) { throw 'Hyra sparse checkout setup failed' }
+2026-11-06T14:51:07.5120403Z   }
+2026-11-06T14:51:07.5120729Z   git -C $dir -c core.longpaths=true checkout --quiet --detach FETCH_HEAD
+2026-11-06T14:51:07.5121199Z   if ($LASTEXITCODE -ne 0) { throw "git checkout failed: $name" }
+2026-11-06T14:51:07.5122799Z   $actual = (git -C $dir rev-parse HEAD).Trim()
+2026-11-06T14:51:07.5123281Z   if ($LASTEXITCODE -ne 0 -or $actual -ne $revision) { throw "Unexpected commit for $name" }
+2026-11-06T14:51:07.5123734Z   Write-Host "$name HEAD $actual"
+2026-11-06T14:51:07.5123999Z }
+2026-11-06T14:51:07.5155794Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:51:07.5156363Z env:
+2026-11-06T14:51:07.5156880Z   MASK_MACHINE: ***
+2026-11-06T14:51:07.5157116Z   MASK_USER: ***
+2026-11-06T14:51:07.5157353Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:51:07.5157616Z   OMP_NUM_THREADS: 2
+2026-11-06T14:51:07.5157952Z   MKL_NUM_THREADS: 2
+2026-11-06T14:51:07.5158167Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:51:07.5158393Z ##[endgroup]
+2026-11-06T14:51:16.3766993Z ergas HEAD 2191177de50e5dccdf9f0d14bca03ffe98fad85b
+2026-11-06T14:51:22.3727958Z rase HEAD 573bb9662f4bbacf31cb61164b1a0f30655b1f84
+2026-11-06T14:51:30.9481958Z forge HEAD 6f65b40a77a2c8fb2c2bdd3eeda30af4f5fb6545
+2026-11-06T14:53:31.0794294Z hyra HEAD 32238e0346318ae1f2f43bd83cae929e6dd2b45a
+2026-11-06T14:53:45.5435850Z torchsim HEAD 7577730feabbd531d211ed247a7a895bbdaee060
+2026-11-06T14:53:45.5915538Z ##[group]Run $dir = Join-Path $env:GITHUB_WORKSPACE 'ergas'
+2026-11-06T14:53:45.5916062Z $dir = Join-Path $env:GITHUB_WORKSPACE 'ergas'
+2026-11-06T14:53:45.5916397Z $env:PYTHONPATH = "$dir\src;$dir\tests"
+2026-11-06T14:53:45.5916683Z Set-Location $dir
+2026-11-06T14:53:45.5917240Z & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -m pytest -q -o addopts='' -m 'not DDP' -k 'cuda or half_gpu' tests/unittests/image/test_ergas.py
+2026-11-06T14:53:45.5917914Z if ($LASTEXITCODE -ne 0) { throw 'ERGAS CUDA tests failed' }
+2026-11-06T14:53:45.5953980Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:53:45.5954445Z env:
+2026-11-06T14:53:45.5954788Z   MASK_MACHINE: ***
+2026-11-06T14:53:45.5955010Z   MASK_USER: ***
+2026-11-06T14:53:45.5955231Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:53:45.5955465Z   OMP_NUM_THREADS: 2
+2026-11-06T14:53:45.5955669Z   MKL_NUM_THREADS: 2
+2026-11-06T14:53:45.5955923Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:53:45.5956131Z ##[endgroup]
+2026-11-06T14:54:49.5641169Z ...................                                                      [100%]
+2026-11-06T14:54:49.5641783Z 19 passed, 54 deselected in 59.12s
+2026-11-06T14:54:50.6088734Z ##[group]Run $dir = Join-Path $env:GITHUB_WORKSPACE 'rase'
+2026-11-06T14:54:50.6089344Z $dir = Join-Path $env:GITHUB_WORKSPACE 'rase'
+2026-11-06T14:54:50.6089809Z $env:PYTHONPATH = "$dir\src;$dir\tests"
+2026-11-06T14:54:50.6090202Z Set-Location $dir
+2026-11-06T14:54:50.6090800Z & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -m pytest -q -o addopts='' -m 'not DDP' -k cuda tests/unittests/image/test_rase.py
+2026-11-06T14:54:50.6091556Z if ($LASTEXITCODE -ne 0) { throw 'RASE CUDA tests failed' }
+2026-11-06T14:54:50.6127524Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:54:50.6128078Z env:
+2026-11-06T14:54:50.6128565Z   MASK_MACHINE: ***
+2026-11-06T14:54:50.6128859Z   MASK_USER: ***
+2026-11-06T14:54:50.6129212Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:54:50.6129630Z   OMP_NUM_THREADS: 2
+2026-11-06T14:54:50.6129976Z   MKL_NUM_THREADS: 2
+2026-11-06T14:54:50.6130407Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:54:50.6130686Z ##[endgroup]
+2026-11-06T14:55:11.3041615Z ........                                                                 [100%]
+2026-11-06T14:55:12.3647984Z ============================== warnings summary ===============================
+2026-11-06T14:55:12.3659535Z tests/unittests/image/test_rase.py::test_rase_uneven_updates_and_merge[cuda]
+2026-11-06T14:55:12.3660625Z tests/unittests/image/test_rase.py::test_rase_forward_preserves_gradients[dtype0-cuda]
+2026-11-06T14:55:12.3662320Z tests/unittests/image/test_rase.py::test_rase_forward_preserves_gradients[dtype1-cuda]
+2026-11-06T14:55:12.3663000Z tests/unittests/image/test_rase.py::test_rase_forward_preserves_gradients[dtype2-cuda]
+2026-11-06T14:55:12.3663762Z tests/unittests/image/test_rase.py::test_rase_promotes_dtype_across_updates[dtypes0-cuda]
+2026-11-06T14:55:12.3664622Z tests/unittests/image/test_rase.py::test_rase_promotes_dtype_across_updates[dtypes1-cuda]
+2026-11-06T14:55:12.3665321Z tests/unittests/image/test_rase.py::test_rase_low_precision_accumulation[dtype0-cuda]
+2026-11-06T14:55:12.3665909Z tests/unittests/image/test_rase.py::test_rase_low_precision_accumulation[dtype1-cuda]
+2026-11-06T14:55:12.3667643Z   C:\PR\github-gpu-runner-20261106\_work\gpu-pr-validation-20261106-ef7243290e\gpu-pr-validation-20261106-ef7243290e\rase\src\torchmetrics\utilities\prints.py:70: FutureWarning: Importing `relative_average_spectral_error` from `torchmetrics.functional` was deprecated and will be removed in 2.0. Import `relative_average_spectral_error` from `torchmetrics.image` instead.
+2026-11-06T14:55:12.3669217Z     _future_warning(
+2026-11-06T14:55:12.3669358Z 
+2026-11-06T14:55:12.3669658Z -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2026-11-06T14:55:12.3670071Z 8 passed, 27 deselected, 8 warnings in 15.28s
+2026-11-06T14:55:12.4009941Z ##[group]Run $dir = Join-Path $env:GITHUB_WORKSPACE 'forge'
+2026-11-06T14:55:12.4010359Z $dir = Join-Path $env:GITHUB_WORKSPACE 'forge'
+2026-11-06T14:55:12.4010630Z Set-Location $dir
+2026-11-06T14:55:12.4011049Z & 'C:\PR\torchmetrics\.venv\Scripts\python.exe' -m pytest -q -o addopts='' tests/test_task_suite.py
+2026-11-06T14:55:12.4011567Z if ($LASTEXITCODE -ne 0) { throw 'ForgeKernel task tests failed' }
+2026-11-06T14:55:12.4041974Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:55:12.4042353Z env:
+2026-11-06T14:55:12.4042640Z   MASK_MACHINE: ***
+2026-11-06T14:55:12.4042832Z   MASK_USER: ***
+2026-11-06T14:55:12.4043012Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:55:12.4043223Z   OMP_NUM_THREADS: 2
+2026-11-06T14:55:12.4043395Z   MKL_NUM_THREADS: 2
+2026-11-06T14:55:12.4043558Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:55:12.4043747Z ##[endgroup]
+2026-11-06T14:55:20.0250644Z .....................                                                    [100%]
+2026-11-06T14:55:20.0251209Z 21 passed in 4.34s
+2026-11-06T14:55:20.4963625Z ##[group]Run $dir = Join-Path $env:GITHUB_WORKSPACE 'hyra\AI4Science\hyinv'
+2026-11-06T14:55:20.4964178Z $dir = Join-Path $env:GITHUB_WORKSPACE 'hyra\AI4Science\hyinv'
+2026-11-06T14:55:20.4964526Z $env:PYTHONPATH = $dir
+2026-11-06T14:55:20.4964763Z Set-Location $dir
+2026-11-06T14:55:20.5023310Z & 'D:\Python\python.exe' -m unittest discover -s tests -p test_fixed_positions.py -v
+2026-11-06T14:55:20.5024059Z if ($LASTEXITCODE -ne 0) { throw 'HyInv tests failed' }
+2026-11-06T14:55:20.5058637Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:55:20.5059045Z env:
+2026-11-06T14:55:20.5059588Z   MASK_MACHINE: ***
+2026-11-06T14:55:20.5059821Z   MASK_USER: ***
+2026-11-06T14:55:20.5060050Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:55:20.5060297Z   OMP_NUM_THREADS: 2
+2026-11-06T14:55:20.5060482Z   MKL_NUM_THREADS: 2
+2026-11-06T14:55:20.5060757Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:55:20.5060971Z ##[endgroup]
+2026-11-06T14:55:30.2979965Z test_command_line_uses_the_same_fixed_positions (test_fixed_positions.FixedInsertionCodesTest.test_command_line_uses_the_same_fixed_positions) ... ok
+2026-11-06T14:55:30.3128161Z test_inclusive_insertion_code_ranges (test_fixed_positions.FixedInsertionCodesTest.test_inclusive_insertion_code_ranges) ... ok
+2026-11-06T14:55:30.3157956Z test_insertions_and_legacy_number_selection (test_fixed_positions.FixedInsertionCodesTest.test_insertions_and_legacy_number_selection) ... ok
+2026-11-06T14:55:30.3181853Z test_manually_constructed_legacy_structure (test_fixed_positions.FixedInsertionCodesTest.test_manually_constructed_legacy_structure) ... ok
+2026-11-06T14:55:31.0346096Z test_reference_model_cuda_keeps_selected_native_residues (test_fixed_positions.FixedInsertionCodesTest.test_reference_model_cuda_keeps_selected_native_residues) ... ok
+2026-11-06T14:55:31.1219803Z test_reference_model_keeps_selected_native_residues (test_fixed_positions.FixedInsertionCodesTest.test_reference_model_keeps_selected_native_residues) ... ok
+2026-11-06T14:55:31.1244325Z test_unknown_position_and_multichain_without_chain_fail (test_fixed_positions.FixedInsertionCodesTest.test_unknown_position_and_multichain_without_chain_fail) ... ok
+2026-11-06T14:55:31.1244993Z 
+2026-11-06T14:55:31.1245201Z ----------------------------------------------------------------------
+2026-11-06T14:55:31.1245580Z Ran 7 tests in 5.651s
+2026-11-06T14:55:31.1245734Z 
+2026-11-06T14:55:31.1245824Z OK
+2026-11-06T14:55:31.5508849Z ##[group]Run $dir = Join-Path $env:GITHUB_WORKSPACE 'torchsim'
+2026-11-06T14:55:31.5509319Z $dir = Join-Path $env:GITHUB_WORKSPACE 'torchsim'
+2026-11-06T14:55:31.5509615Z $env:PYTHONPATH = $dir
+2026-11-06T14:55:31.5509839Z Set-Location $dir
+2026-11-06T14:55:31.5510916Z & 'C:\PR\torchsim-venv-20261106\Scripts\python.exe' -c "import pathlib, torch, torch_sim; assert torch.cuda.is_available(); assert pathlib.Path(torch_sim.__file__).resolve().is_relative_to(pathlib.Path.cwd()); print('GPU:', torch.cuda.get_device_name(0), 'PyTorch:', torch.__version__, 'CUDA:', torch.version.cuda)"
+2026-11-06T14:55:31.5512308Z if ($LASTEXITCODE -ne 0) { throw 'TorchSim CUDA or source check failed' }
+2026-11-06T14:55:31.5513087Z & 'C:\PR\torchsim-venv-20261106\Scripts\python.exe' -m pytest tests/test_correlations.py -k single_component_autocorrelation -q
+2026-11-06T14:55:31.5513767Z if ($LASTEXITCODE -ne 0) { throw 'TorchSim correlation regression failed' }
+2026-11-06T14:55:31.5546130Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-11-06T14:55:31.5546493Z env:
+2026-11-06T14:55:31.5546957Z   MASK_MACHINE: ***
+2026-11-06T14:55:31.5547188Z   MASK_USER: ***
+2026-11-06T14:55:31.5547386Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-06T14:55:31.5547648Z   OMP_NUM_THREADS: 2
+2026-11-06T14:55:31.5547887Z   MKL_NUM_THREADS: 2
+2026-11-06T14:55:31.5548076Z   GIT_TERMINAL_PROMPT: 0
+2026-11-06T14:55:31.5548288Z ##[endgroup]
+2026-11-06T14:55:41.4459839Z Warp 1.19.0 initialized:
+2026-11-06T14:55:41.4460573Z    CUDA Toolkit 13.4, Driver 13.4
+2026-11-06T14:55:41.4461086Z    Devices:
+2026-11-06T14:55:41.4461711Z      "cpu"      : "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel"
+2026-11-06T14:55:41.4462669Z      "cuda:0"   : "NVIDIA GeForce RTX 4060 Laptop GPU" (8 GiB, sm_89, mempool enabled)
+2026-11-06T14:55:41.4463315Z    Kernel cache:
+2026-11-06T14:55:41.4463964Z      \\?\C:\Users\***\AppData\Local\NVIDIA\warp\Cache\1.19.0
+2026-11-06T14:55:41.4464415Z GPU: NVIDIA GeForce RTX 4060 Laptop GPU PyTorch: 2.6.0+cu124 CUDA: 12.4
+2026-11-06T14:55:57.7814206Z ............                                                             [100%]
+2026-11-06T14:55:57.7814768Z 12 passed, 14 deselected in 0.58s
+2026-11-06T14:55:59.1019424Z Cleaning up orphan processes
